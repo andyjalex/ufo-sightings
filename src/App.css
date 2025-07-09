@@ -1,0 +1,10 @@
+@import "tailwindcss";
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.chart-area {
+  margin-bottom: 16px;
+}
