@@ -5,6 +5,32 @@
   text-align: center;
 }
 
+
+
+.grid {
+  color: rgb(164, 162, 162);
+}
+.domain {
+  color: white;
+}
+
+button {
+  cursor: pointer;
+}
+
+.bar1-label {
+  fill: white;
+  font-size: 12px;
+  text-anchor: middle;
+}
 .chart-area {
-  margin-bottom: 16px;
+  width: 80%;
+  height: auto;
+  margin-bottom: 20px;
+}
+
+.svg-content {
+  display: block;
+  width: 100%;
+  height: auto;
 }
