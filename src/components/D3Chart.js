@@ -7,7 +7,7 @@ export default class D3Chart {
     console.log(element)
     let vis = this;
     vis.margin = {
-        left: 50,
+        left: 70,
         right: 50,
         top: 28,
         bottom: 64
