@@ -1,32 +1,44 @@
 import * as d3 from "d3";
 
-const MARGIN = { TOP: 10, BOTTOM: 50, LEFT: 70, RIGHT: 10 };
-const WIDTH = 800 - MARGIN.LEFT - MARGIN.RIGHT;
-const HEIGHT = 500 - MARGIN.TOP - MARGIN.BOTTOM;
+
 
 export default class D3Chart {
   constructor(element) {
-    const vis = this;
+    console.log(element)
+    let vis = this;
+    vis.margin = {
+        left: 70,
+        right: 50,
+        top: 28,
+        bottom: 64
+      }
+    vis.height = 350 - vis.margin.top - vis.margin.bottom
+		vis.width = 800 - vis.margin.left - vis.margin.right
+
     vis.svg = d3
       .select(element)
       .append("svg")
-      .attr("width", WIDTH + MARGIN.LEFT + MARGIN.RIGHT)
-      .attr("height", HEIGHT + MARGIN.TOP + MARGIN.BOTTOM)
+      .attr("preserveAspectRatio", "xMinYMin meet")
+      .attr("viewBox", "0 0 " + (vis.width + vis.margin.left + vis.margin.right) + " " + (vis.height + vis.margin.top + vis.margin.bottom))
       .style("background-color", "grey")
       .style("border-radius", "25px")
       .style("", "grey")
+      .classed("svg-content", true)
       .append("g")
-      .attr("transform", `translate(${MARGIN.LEFT}, ${MARGIN.TOP})`);
+      .attr("transform", `translate(${vis.margin.left}, ${vis.margin.top})`);
+
+    // set the colour scale
+    vis.color = d3.scaleOrdinal(d3.schemeCategory10);
 
     vis.xLabel = vis.svg
       .append("text")
-      .attr("x", WIDTH / 2)
-      .attr("y", HEIGHT + 50)
+      .attr("x", vis.width / 2)
+      .attr("y", vis.height + 50)
       .attr("text-anchor", "middle");
 
     vis.svg
       .append("text")
-      .attr("x", -(HEIGHT / 2))
+      .attr("x", -(vis.height / 2))
       .attr("y", -50)
       .attr("text-anchor", "middle")
       .text("No. Sightings")
@@ -34,77 +46,28 @@ export default class D3Chart {
 
     vis.xAxisGroup = vis.svg
       .append("g")
-      .attr("transform", `translate(0, ${HEIGHT})`);
+      .attr("transform", `translate(0, ${vis.height})`);
 
     vis.yAxisGroup = vis.svg.append("g");
-    d3.json(
-      "https://my-json-server.typicode.com/Louis-Procode/ufo-Sightings/ufoSightings"
-    ).then((dataset) => {
-      this.wrangleData(dataset);
-    });
   }
-
-  getWeekStartDate(date) {
-    const day = date.getDay(); // 0 (Sun) to 6 (Sat)
-    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when Sunday
-    return new Date(date.setDate(diff));
-  }
-  getWeekNumber(date) {
-    const tempDate = new Date(date.getTime());
-    tempDate.setHours(0, 0, 0, 0);
-
-    // Thursday in current week decides the year
-    tempDate.setDate(tempDate.getDate() + 3 - ((tempDate.getDay() + 6) % 7));
-
-    const week1 = new Date(tempDate.getFullYear(), 0, 4);
-    const diff = (tempDate - week1) / (1000 * 60 * 60 * 24);
-    return 1 + Math.floor(diff / 7);
-  }
-
-  wrangleData = (data) => {
-    let vis = this;
-    console.log(data);
-
-    //create date field
-    //create weekdayName field
-    //create week number
-    const newData = data.map((item) => {
-      const [day, month, year] = item.date.split("/");
-      const date = new Date(year, month - 1, day);
-      const weekDayName = date.toLocaleDateString("en-US", { weekday: "long" });
-      const weekNumber = this.getWeekNumber(date);
-      const weekStartDate = this.getWeekStartDate(new Date(date));
-      return {
-        sightings: item.sightings,
-        date: date,
-        weekNumber: weekNumber,
-        weekStartDate: weekStartDate,
-        weekDayName: weekDayName,
-      };
-    });
-    console.log(newData);
-    vis.data = newData;
-    this.update();
-  };
 
   //will accept week number
-  update() {
+  update(data) {
     const vis = this;
-    console.log("update", vis.data);
-    vis.xLabel.text(`date`);
+    console.log("update", data);
 
     const y = d3
       .scaleLinear()
       .domain([
-        d3.min(vis.data, (d) => d.sightings) * 0.95,
-        d3.max(vis.data, (d) => d.sightings),
+        d3.min(data, (d) => d.sightings) * 0.95,
+        d3.max(data, (d) => d.sightings),
       ])
-      .range([HEIGHT, 0]);
+      .range([vis.height, 0]);
 
     const x = d3
       .scaleBand()
-      .domain(vis.data.map((d) => d.weekDayName))
-      .range([0, WIDTH])
+      .domain(data.map((d) => d.weekDayName))
+      .range([0, vis.width])
       .padding(0.4);
 
     const xAxisCall = d3.axisBottom(x);
@@ -121,8 +84,22 @@ export default class D3Chart {
     const yAxisCall = d3.axisLeft(y);
     vis.yAxisGroup.transition().duration(500).call(yAxisCall);
 
-    // DATA JOIN
-    const rects = vis.svg.selectAll("rect").data(vis.data);
+    // === GRID LINES (one grid group) ===
+    let grid = vis.svg.select(".grid");
+
+    // If it doesn't exist yet, append it
+    if (grid.empty()) {
+      grid = vis.svg.append("g").attr("class", "grid");
+    }
+
+    // Always update the grid
+    grid
+      .transition()
+      .duration(500)
+      .call(d3.axisLeft(y).tickSize(-vis.width).tickFormat(""));
+
+    // == BARS DATA JOIN ==
+    const rects = vis.svg.selectAll("rect").data(data, (d) => d.weekDayName);
 
     // EXIT
     rects
@@ -130,7 +107,7 @@ export default class D3Chart {
       .transition()
       .duration(500)
       .attr("height", 0)
-      .attr("y", HEIGHT)
+      .attr("y", vis.height)
       .remove();
 
     // UPDATE
@@ -140,19 +117,56 @@ export default class D3Chart {
       .attr("x", (d) => x(d.weekDayName))
       .attr("y", (d) => y(d.sightings))
       .attr("width", x.bandwidth)
-      .attr("height", (d) => HEIGHT - y(d.sightings));
+      .attr("height", (d) => vis.height - y(d.sightings));
 
     // ENTER
+
     rects
       .enter()
       .append("rect")
       .attr("x", (d) => x(d.weekDayName))
       .attr("width", x.bandwidth)
-      .attr("fill", "white")
-      .attr("y", HEIGHT)
+      .attr("fill", (d, i) => vis.color(i))
+      .attr("y", vis.height)
       .transition()
       .duration(500)
-      .attr("height", (d) => HEIGHT - y(d.sightings))
+      .attr("height", (d) => vis.height - y(d.sightings))
       .attr("y", (d) => y(d.sightings));
+
+    // Remove existing labels first
+    //vis.svg.selectAll('.bar1-label').remove();
+
+    const labels = vis.svg.selectAll(".bar1-label").data(data, (d) => d.weekDayName);
+
+    // EXIT
+    labels
+      .exit()
+      .transition()
+      .duration(500)
+      .attr("height", 0)
+      .attr("y", vis.height)
+      .remove();
+
+    //update
+    labels
+      .transition()
+      .duration(500)
+      .attr("y", (d) => y(d.sightings) - 8)
+      .attr("x", (d) => x(d.weekDayName) + x.bandwidth() / 2)
+      .text((d) => d.sightings)
+
+    //Enter
+    labels
+      .enter()
+      .append("text")
+      .attr("class", "bar1-label")
+      .text((d) => d.sightings)
+      .attr("y", vis.height)
+      .attr("x", (d) => x(d.weekDayName) + x.bandwidth() / 2)
+      .attr("text-anchor", "middle")
+      .transition()
+      .duration(500)
+      .attr("height", (d) => vis.height - y(d.sightings))
+      .attr("y", (d) =>  y(d.sightings) - 8)
   }
 }
