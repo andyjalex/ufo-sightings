@@ -28,9 +28,6 @@ function App() {
   //wrangle data
   useEffect(() => {
     if (!results) return;
-    //create date field
-    //create weekdayName field
-    //create week number
     const newData = results.map((item) => {
       const [day, month, year] = item.date.split("/");
       const dateTime = new Date(year, month - 1, day);
@@ -66,12 +63,13 @@ function App() {
     setDataLength(Object.keys(grouped).length);
   }, [results]);
 
+  //function to handle the user clicking backwards 
   const handleForwards = () => {
     if (weekNo === dataLength - 1) return;
     setWeekData([data[weekNo + 1]][0]);
     setWeekNo((previous) => previous + 1);
   };
-
+    //function to handle the user clicking forwards 
   const handleBackwards = () => {
     if (weekNo === 0) return;
     setWeekData([data[weekNo - 1]][0]);
@@ -82,6 +80,7 @@ function App() {
     return <ChartWrapper data={weekData} />;
   };
 
+  //show a loading message if the data hasn't been loaded into state yet 
   if (!weekData) {
     return (
       <div className="flex justify-center items-center h-100">Loading...</div>
